@@ -4,13 +4,18 @@
 
 ## Video Demo
 
-[View the Echo-Vision Demo Video](./Loom Message.mp4)
+## Project Demonstration
+
+<video src="./Loom Message.mp4" width="100%" controls>
+  Your browser does not support the video tag.
+</video>
+
 
 ## Why Echo-Vision?
 
 Traditional assistive tools often just identify objects (e.g., "A chair"). Echo-Vision goes further by **understanding context**. It doesn't just see; it reasons. Whether it's reading a prescription, finding a specific item on a cluttered desk, or navigating an unfamiliar room, Echo-Vision provides the "cognitive bridge" needed for true independence.
 
----
+
 
 ## Powered by Gemini 1.5 Flash
 
@@ -20,7 +25,7 @@ The heart of this project is the **Gemini 1.5 Flash API**. We chose this model f
 * **Low Latency (Speed):** For a visually impaired person, a delay of even a few seconds can be disorienting. Gemini Flash provides near-instant responses, ensuring a fluid experience.
 * **Spatial Reasoning:** We programmed the system to use a "Clock-face" orientation (e.g., "Your water bottle is at 2 o'clock"). Gemini's ability to understand 3D space from 2D images makes this possible.
 
----
+
 
 ## Technical Choices & Architecture
 
@@ -31,7 +36,7 @@ For this project, we deliberately chose **React** and **TypeScript**, aligned wi
 * **React:** React allows us to build a highly responsive and "accessible-first" user interface. It ensures that UI updates (like analysis results) are handled efficiently.
 * **Direct Web Integration:** While frameworks like *FastAPI* or *Flutter* are excellent, we chose a direct Web-to-Gemini architecture for its **portability**. Any device with a browser can become an Echo-Vision device instantly, without the friction of app store installations.
 
----
+
 
 ## Challenges We Overcame
 
@@ -41,7 +46,7 @@ Building an app for the visually impaired comes with unique engineering hurdles:
 * **Spatial Accuracy:** Moving from "I see a door" to "The door is 2 meters to your left" required fine-tuning our prompts. We implemented a system of "system instructions" to force the model to think in terms of spatial coordinates.
 * **Voice Clarity:** We had to ensure the AI's response was not just accurate, but easy to hear. We integrated high-quality text-to-speech to ensure the output remains clear even in busy environments.
 
----
+
 
 ## Privacy & Ethics
 
@@ -51,7 +56,7 @@ Privacy is a fundamental right, especially for users relying on assistive techno
 * **User Agency:** The application only captures data when the user explicitly triggers an interaction. There is no "hidden" background recording.
 * **Ethical AI:** We have implemented safety filters to ensure the AI does not misidentify hazardous situations, always providing a "safety-first" disclaimer when navigation is involved.
 
----
+
 
 ## Key Features
 
@@ -60,7 +65,7 @@ Privacy is a fundamental right, especially for users relying on assistive techno
 3.  **Contextual Intelligence:** Ask about specific details, like expiry dates or ingredients on a package.
 4.  **Natural Voice Output:** Responses are delivered in a clear, professional English voice.
 
----
+
 
 ## Installation & Setup
 
@@ -83,7 +88,7 @@ Privacy is a fundamental right, especially for users relying on assistive techno
     npm run dev
     ```
 
----
+
 
 ## Roadmap
 * **Haptic Feedback:** Integrating phone vibrations to signal proximity to obstacles.
@@ -96,5 +101,5 @@ Privacy is a fundamental right, especially for users relying on assistive techno
 
 View your app in AI Studio: https://ai.studio/apps/drive/1SBGHfBw9I6E6YAkSptJfyRk9kxlTZsH6
 
----
+
 *Developed for the Google Gemini API Hackathon.*
