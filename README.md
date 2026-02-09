@@ -2,7 +2,11 @@
 
 **Echo-Vision** is a smart digital companion designed to empower people with visual impairments. Using the advanced reasoning of **Gemini 1.5 Flash**, it transforms visual environments into clear, spatial audio descriptions through natural voice interaction.
 
----
+## Video Demo
+
+<video src="Loom Message.mp4" width="100%" controls>
+  Your browser does not support the video tag.
+</video>
 
 ## Why Echo-Vision?
 
