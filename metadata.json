@@ -1,0 +1,9 @@
+{
+  "name": "Echo-Vision Assistant Mobile",
+  "description": "Assistant multimodal pour malvoyants utilisant Gemini 3, offrant vision en direct, recherche contextuelle et navigation assistée.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
