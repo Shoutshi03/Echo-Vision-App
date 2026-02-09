@@ -4,9 +4,7 @@
 
 ## Video Demo
 
-<video src="Loom Message.mp4" width="100%" controls>
-  Your browser does not support the video tag.
-</video>
+[View the Echo-Vision Demo Video](./Loom Message.mp4)
 
 ## Why Echo-Vision?
 
