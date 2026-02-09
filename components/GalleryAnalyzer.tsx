@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { SessionStatus } from '../types.ts';
@@ -21,7 +20,6 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // Cleanup URL on unmount
   useEffect(() => {
     return () => {
       if (mediaUrl) URL.revokeObjectURL(mediaUrl);
@@ -43,8 +41,7 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
     setMediaType(file.type.startsWith('video') ? 'video' : 'image');
     setResult('');
     
-    // Announce vocally that the file is ready
-    const utterance = new SpeechSynthesisUtterance("File loaded. Hold the microphone to ask your question.");
+    const utterance = new SpeechSynthesisUtterance("Ready. Hold the button to ask a question.");
     utterance.lang = 'en-US';
     window.speechSynthesis.speak(utterance);
   };
@@ -68,9 +65,9 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
 
       recorder.start();
       setIsRecording(true);
-      window.navigator.vibrate?.(50); // Haptic feedback
+      window.navigator.vibrate?.(50);
     } catch (err) {
-      setError("Cannot access microphone.");
+      setError("Microphone access denied.");
     }
   };
 
@@ -95,7 +92,7 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
 
     setIsProcessing(true);
     onStatusChange(SessionStatus.ANALYZING);
-    setResult('Echo-Vision is analyzing your request...');
+    setResult('');
     setError(null);
 
     try {
@@ -113,12 +110,12 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
           parts: [
             { inlineData: { data: mediaBase64, mimeType: mediaFile.type } },
             { inlineData: { data: audioBase64, mimeType: 'audio/webm' } },
-            { text: "You are Echo-Vision, an assistant for the visually impaired. Answer the audio question regarding this media. Be precise and concise. IMPORTANT: NEVER use Markdown formatting (**). Respond only in plain text." }
+            { text: "Analyze the content and answer the question concisely for a visually impaired user. Plain text only, no markdown." }
           ]
         }
       });
 
-      const text = response.text || "I couldn't analyze your request.";
+      const text = response.text || "I couldn't process that.";
       setResult(text);
       
       const utterance = new SpeechSynthesisUtterance(text);
@@ -126,7 +123,7 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
       window.speechSynthesis.speak(utterance);
 
     } catch (err: any) {
-      setError("Error during multimodal analysis.");
+      setError("Analysis failed. Please try again.");
       setResult("");
     } finally {
       setIsProcessing(false);
@@ -135,28 +132,31 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
   };
 
   return (
-    <div className="h-full flex flex-col p-8 gap-8 animate-in fade-in duration-700 bg-[#050505]">
-      <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[40px] p-6 bg-white/5 overflow-hidden relative shadow-inner">
+    <div className="h-full flex flex-col p-6 gap-6 animate-in fade-in duration-700 bg-slate-950 pb-32">
+      {/* Media Preview Area */}
+      <div className="flex-1 flex flex-col items-center justify-center border-2 border-slate-800 rounded-[48px] bg-slate-900/40 overflow-hidden relative group transition-all duration-500 hover:border-indigo-500/30">
         {!mediaUrl ? (
-          <div className="text-center space-y-6">
-            <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto text-cyan-400 border border-white/10">
+          <div className="text-center space-y-8 px-6">
+            <div className="w-24 h-24 bg-indigo-500/10 rounded-[32px] flex items-center justify-center mx-auto text-indigo-400 border border-white/5 shadow-inner">
               <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <div>
-              <p className="text-white font-black text-xl mb-1 tracking-tight">Import Media</p>
-              <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Image or Video • Max {MAX_FILE_SIZE_MB}MB</p>
+            <div className="space-y-2">
+              <p className="text-white font-bold text-2xl tracking-tight">Media Assistant</p>
+              <p className="text-slate-500 text-xs font-black uppercase tracking-widest leading-relaxed">
+                Analyze images or videos<br/>up to {MAX_FILE_SIZE_MB}MB
+              </p>
             </div>
             <button 
               onClick={() => fileInputRef.current?.click()}
-              className="px-10 py-4 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-cyan-400 transition-colors shadow-xl active:scale-95"
+              className="px-10 py-5 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 active:scale-95"
             >
-              Browse
+              Select File
             </button>
           </div>
         ) : (
-          <div className="w-full h-full flex flex-col items-center relative rounded-3xl overflow-hidden bg-black">
+          <div className="w-full h-full flex flex-col items-center relative bg-slate-950">
             {mediaType === 'image' ? (
               <img src={mediaUrl} alt="Preview" className="w-full h-full object-contain" />
             ) : (
@@ -164,7 +164,8 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
             )}
             <button 
               onClick={() => { setMediaUrl(null); setResult(''); setError(null); }}
-              className="absolute top-6 right-6 p-4 bg-rose-600 rounded-full text-white shadow-2xl z-10 active:scale-90"
+              className="absolute top-6 right-6 p-4 bg-slate-900/80 backdrop-blur-lg rounded-full text-white/50 hover:text-rose-400 transition-colors shadow-2xl z-10"
+              aria-label="Remove media"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -181,12 +182,31 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
         />
       </div>
 
+      {/* Interaction Area */}
       <div className="flex flex-col items-center gap-6">
         {mediaUrl && (
-          <div className="w-full flex flex-col items-center gap-4">
-            <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
-              {isProcessing ? 'Analyzing...' : isRecording ? 'Listening...' : 'Hold to ask a question'}
-            </p>
+          <div className="w-full flex flex-col items-center gap-6">
+            {isProcessing ? (
+              <div className="flex flex-col items-center gap-6 py-2">
+                <div className="relative w-12 h-12">
+                  <div className="absolute inset-0 border-4 border-white/5 rounded-full" />
+                  <div className="absolute inset-0 border-4 border-t-indigo-500 rounded-full animate-spin" />
+                </div>
+                <div className="flex gap-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce"
+                      style={{ animationDelay: `${i * 0.15}s` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">
+                {isRecording ? 'Listening...' : 'Hold Mic to ask Question'}
+              </p>
+            )}
             
             <button
               onMouseDown={startRecording}
@@ -196,32 +216,39 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
               onTouchEnd={(e) => { e.preventDefault(); stopRecording(); }}
               disabled={isProcessing}
               className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ${
-                isRecording ? 'bg-rose-500 scale-125' : isProcessing ? 'bg-white/10 opacity-50' : 'bg-cyan-500 hover:scale-105 active:scale-90'
+                isRecording 
+                  ? 'bg-rose-500 scale-110 shadow-rose-500/40' 
+                  : isProcessing 
+                    ? 'bg-slate-800 opacity-40 grayscale' 
+                    : 'bg-indigo-600 hover:scale-105 active:scale-95 shadow-indigo-600/40'
               }`}
             >
               {isProcessing ? (
-                <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-white/10 border-t-white rounded-full animate-spin" />
               ) : (
-                <svg className={`w-10 h-10 ${isRecording ? 'text-white' : 'text-black'}`} fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
               )}
               {isRecording && (
-                <div className="absolute inset-0 rounded-full border-4 border-white/30 animate-ping" />
+                <div className="absolute inset-[-12px] rounded-full border-4 border-rose-500/20 animate-ping" />
               )}
             </button>
           </div>
         )}
 
         {error && (
-          <div className="w-full p-4 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-2xl text-center text-sm font-bold">
+          <div className="w-full p-5 bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded-[24px] text-center text-xs font-bold animate-in slide-in-from-bottom-2">
             {error}
           </div>
         )}
 
         {result && (
-          <div className="w-full p-8 bg-white/5 border border-white/10 rounded-[32px] text-lg leading-relaxed animate-in slide-in-from-bottom-6 shadow-2xl overflow-y-auto max-h-48 text-white/90 font-medium">
+          <div className="w-full p-8 bg-slate-900 border border-white/5 rounded-[40px] text-lg leading-tight animate-in slide-in-from-bottom-8 shadow-2xl overflow-y-auto max-h-56 text-slate-100 font-medium tracking-tight">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="w-1 h-4 bg-indigo-500 rounded-full" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Response</span>
+            </div>
             {result}
           </div>
         )}
