@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { SessionStatus } from '../types.ts';
 
@@ -13,8 +14,19 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [result, setResult] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  // Cleanup URL on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaUrl) URL.revokeObjectURL(mediaUrl);
+    };
+  }, [mediaUrl]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
@@ -22,7 +34,7 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
     if (!file) return;
 
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setError(`Fichier trop volumineux (max ${MAX_FILE_SIZE_MB}Mo).`);
+      setError(`File too large (max ${MAX_FILE_SIZE_MB}MB).`);
       return;
     }
 
@@ -30,46 +42,91 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
     setMediaUrl(url);
     setMediaType(file.type.startsWith('video') ? 'video' : 'image');
     setResult('');
+    
+    // Announce vocally that the file is ready
+    const utterance = new SpeechSynthesisUtterance("File loaded. Hold the microphone to ask your question.");
+    utterance.lang = 'en-US';
+    window.speechSynthesis.speak(utterance);
   };
 
-  const analyzeMedia = async () => {
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        processMultimodal(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      window.navigator.vibrate?.(50); // Haptic feedback
+    } catch (err) {
+      setError("Cannot access microphone.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const processMultimodal = async (audioBlob: Blob) => {
     if (!mediaUrl || !fileInputRef.current?.files?.[0]) return;
-    
+
     setIsProcessing(true);
     onStatusChange(SessionStatus.ANALYZING);
-    setResult('Analyse en cours par Echo-Vision...');
+    setResult('Echo-Vision is analyzing your request...');
     setError(null);
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-      const file = fileInputRef.current.files[0];
+      const mediaFile = fileInputRef.current.files[0];
       
-      const reader = new FileReader();
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = () => reject(new Error("Lecture impossible"));
-        reader.readAsDataURL(file);
-      });
+      const [mediaBase64, audioBase64] = await Promise.all([
+        blobToBase64(mediaFile),
+        blobToBase64(audioBlob)
+      ]);
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: {
           parts: [
-            { inlineData: { data: base64Data, mimeType: file.type } },
-            { text: "Tu es Echo-Vision. Décris précisément ce que tu vois sur cette image/vidéo pour une personne malvoyante. IMPORTANT : N'utilise JAMAIS de formattage Markdown comme des astérisques (**). Produis uniquement du texte brut." }
+            { inlineData: { data: mediaBase64, mimeType: mediaFile.type } },
+            { inlineData: { data: audioBase64, mimeType: 'audio/webm' } },
+            { text: "You are Echo-Vision, an assistant for the visually impaired. Answer the audio question regarding this media. Be precise and concise. IMPORTANT: NEVER use Markdown formatting (**). Respond only in plain text." }
           ]
         }
       });
 
-      const text = response.text || "Aucune analyse disponible.";
+      const text = response.text || "I couldn't analyze your request.";
       setResult(text);
       
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'fr-FR';
+      utterance.lang = 'en-US';
       window.speechSynthesis.speak(utterance);
 
     } catch (err: any) {
-      setError("Erreur technique lors de l'analyse.");
+      setError("Error during multimodal analysis.");
       setResult("");
     } finally {
       setIsProcessing(false);
@@ -88,14 +145,14 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
               </svg>
             </div>
             <div>
-              <p className="text-white font-black text-xl mb-1 tracking-tight">Importer un média</p>
-              <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Image ou Vidéo • Max {MAX_FILE_SIZE_MB}Mo</p>
+              <p className="text-white font-black text-xl mb-1 tracking-tight">Import Media</p>
+              <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Image or Video • Max {MAX_FILE_SIZE_MB}MB</p>
             </div>
             <button 
               onClick={() => fileInputRef.current?.click()}
-              className="px-10 py-4 bg-cyan-500 text-black rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-cyan-400 transition-colors shadow-xl active:scale-95"
+              className="px-10 py-4 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-cyan-400 transition-colors shadow-xl active:scale-95"
             >
-              Parcourir
+              Browse
             </button>
           </div>
         ) : (
@@ -124,34 +181,47 @@ const GalleryAnalyzer: React.FC<GalleryAnalyzerProps> = ({ onStatusChange }) => 
         />
       </div>
 
-      <div className="space-y-6">
+      <div className="flex flex-col items-center gap-6">
+        {mediaUrl && (
+          <div className="w-full flex flex-col items-center gap-4">
+            <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
+              {isProcessing ? 'Analyzing...' : isRecording ? 'Listening...' : 'Hold to ask a question'}
+            </p>
+            
+            <button
+              onMouseDown={startRecording}
+              onMouseUp={stopRecording}
+              onMouseLeave={stopRecording}
+              onTouchStart={(e) => { e.preventDefault(); startRecording(); }}
+              onTouchEnd={(e) => { e.preventDefault(); stopRecording(); }}
+              disabled={isProcessing}
+              className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ${
+                isRecording ? 'bg-rose-500 scale-125' : isProcessing ? 'bg-white/10 opacity-50' : 'bg-cyan-500 hover:scale-105 active:scale-90'
+              }`}
+            >
+              {isProcessing ? (
+                <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+              ) : (
+                <svg className={`w-10 h-10 ${isRecording ? 'text-white' : 'text-black'}`} fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                </svg>
+              )}
+              {isRecording && (
+                <div className="absolute inset-0 rounded-full border-4 border-white/30 animate-ping" />
+              )}
+            </button>
+          </div>
+        )}
+
         {error && (
-          <div className="p-4 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-2xl text-center text-sm font-bold animate-shake">
+          <div className="w-full p-4 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-2xl text-center text-sm font-bold">
             {error}
           </div>
         )}
 
-        {mediaUrl && (
-          <button
-            onClick={analyzeMedia}
-            disabled={isProcessing}
-            className={`w-full py-6 rounded-3xl font-black text-lg flex items-center justify-center gap-4 transition-all shadow-2xl ${
-              isProcessing ? 'bg-white/5 text-white/20' : 'bg-white text-black active:scale-95'
-            }`}
-          >
-            {isProcessing ? (
-              <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-            ) : (
-              <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
-              </svg>
-            )}
-            {isProcessing ? 'TRAITEMENT EN COURS...' : 'LANCER L\'ANALYSE'}
-          </button>
-        )}
-
         {result && (
-          <div className="p-8 bg-white/5 border-l-8 border-cyan-500 rounded-r-[32px] text-lg leading-relaxed animate-in slide-in-from-bottom-6 shadow-2xl overflow-y-auto max-h-60">
+          <div className="w-full p-8 bg-white/5 border border-white/10 rounded-[32px] text-lg leading-relaxed animate-in slide-in-from-bottom-6 shadow-2xl overflow-y-auto max-h-48 text-white/90 font-medium">
             {result}
           </div>
         )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
 import { SessionStatus } from '../types.ts';
@@ -106,9 +107,9 @@ const EchoVision: React.FC<EchoVisionProps> = ({ onStatusChange }) => {
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } },
           },
-          systemInstruction: 'Tu es Echo-Vision. Analyse visuelle en temps réel pour un malvoyant. Décris les obstacles, les textes et les changements importants de manière concise. IMPORTANT : N\'utilise JAMAIS de formattage Markdown comme des astérisques (**) dans tes réponses, écris uniquement en texte brut.',
+          systemInstruction: 'You are Echo-Vision, a real-time visual assistant for the visually impaired. Analyze the video feed and describe obstacles, text, and important changes concisely. Speak directly in English. IMPORTANT: NEVER use Markdown formatting like asterisks (**) in your spoken responses. Use plain text only.',
           inputAudioTranscription: {},
           outputAudioTranscription: {},
         },
@@ -175,24 +176,49 @@ const EchoVision: React.FC<EchoVisionProps> = ({ onStatusChange }) => {
       });
       sessionRef.current = await sessionPromise;
     } catch (err: any) {
-      setError({ title: "Accès impossible", detail: err.message || "Activez les permissions." });
+      setError({ title: "Access Denied", detail: err.message || "Please enable permissions." });
       onStatusChange(SessionStatus.ERROR);
     }
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-black overflow-hidden">
+    <div className="w-full h-full flex flex-col items-center justify-center bg-black overflow-hidden relative">
       <div className={`fixed inset-0 transition-opacity duration-1000 pointer-events-none ${isActive ? 'opacity-70 scale-100' : 'opacity-0 scale-105'}`}>
         <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
         <canvas ref={canvasRef} className="hidden" />
       </div>
 
-      <div className="z-20 flex flex-col items-center gap-12 w-full px-8 text-center max-w-lg">
+      <div className="z-20 flex flex-col items-center gap-8 w-full px-8 text-center max-w-lg">
+        {!isActive && !error && (
+          <div className="mb-4 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <h2 className="text-3xl font-black text-cyan-400 mb-4 tracking-tighter uppercase">Welcome to Echo-Vision</h2>
+            <p className="text-white/60 text-sm font-medium leading-relaxed max-w-xs mx-auto mb-8">
+              Your eyes through AI. Echo-Vision uses Gemini 3 to describe your surroundings and help you navigate the world.
+            </p>
+            <div className="grid grid-cols-1 gap-4 text-left">
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center text-xl">👁️</div>
+                <div className="flex-1">
+                  <p className="text-xs font-black text-white/90 uppercase tracking-widest">Live Vision</p>
+                  <p className="text-[10px] text-white/40">Real-time description of obstacles and objects.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-xl">🎙️</div>
+                <div className="flex-1">
+                  <p className="text-xs font-black text-white/90 uppercase tracking-widest">Voice Media</p>
+                  <p className="text-[10px] text-white/40">Upload files and ask questions using your voice.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {isActive && (
            <div className="w-full min-h-[140px] bg-white/5 backdrop-blur-3xl rounded-[32px] p-8 border border-white/10 flex items-center justify-center shadow-2xl animate-in slide-in-from-top-12 duration-500">
              <p className="text-xl font-medium text-white/90 leading-relaxed tracking-tight">
-               {lastMessage || "Analyse en direct..."}
+               {lastMessage || "Echo-Vision is analyzing..."}
              </p>
            </div>
         )}
@@ -200,22 +226,34 @@ const EchoVision: React.FC<EchoVisionProps> = ({ onStatusChange }) => {
         <div className="relative">
           <button
             onClick={isActive ? stopSession : startSession}
-            className={`relative w-64 h-64 rounded-full flex flex-col items-center justify-center transition-all duration-500 border-[12px] active:scale-95 ${
-              isActive ? 'bg-rose-500 border-rose-400/30' : 'bg-cyan-500 border-cyan-400/30'
+            className={`relative w-48 h-48 rounded-full flex flex-col items-center justify-center transition-all duration-500 border-[10px] active:scale-95 ${
+              isActive ? 'bg-rose-500 border-rose-400/30' : 'bg-cyan-500 border-cyan-400/30 shadow-[0_0_50px_rgba(34,211,238,0.2)]'
             }`}
           >
             {isActive ? (
-              <div className="flex flex-col items-center gap-2 text-white">
-                <div className="w-14 h-14 bg-white rounded-2xl" />
-                <span className="text-xs font-black uppercase tracking-widest mt-2">Pause</span>
+              <div className="flex flex-col items-center gap-4 text-white">
+                <div className="flex items-center gap-1.5 h-10">
+                  {[...Array(5)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className="w-1.5 bg-white rounded-full animate-bounce"
+                      style={{ 
+                        height: `${30 + Math.random() * 70}%`,
+                        animationDelay: `${i * 0.1}s`,
+                        animationDuration: '0.6s'
+                      }} 
+                    />
+                  ))}
+                </div>
+                <span className="text-xs font-black uppercase tracking-widest">Listening</span>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 text-white">
-                <svg className="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-                <span className="text-xs font-black uppercase tracking-widest">Activer</span>
+                <span className="text-xs font-black uppercase tracking-widest">Activate</span>
               </div>
             )}
           </button>
@@ -228,9 +266,23 @@ const EchoVision: React.FC<EchoVisionProps> = ({ onStatusChange }) => {
         {error && (
           <div className="p-6 bg-rose-500/10 border border-rose-500/30 rounded-3xl text-rose-200 text-sm font-bold animate-bounce">
             {error.title}: {error.detail}
+            <button 
+              onClick={() => setError(null)}
+              className="mt-4 block mx-auto text-[10px] uppercase font-black text-white/40 underline"
+            >
+              Dismiss
+            </button>
           </div>
         )}
       </div>
+
+      {!isActive && (
+        <div className="absolute bottom-10 left-0 right-0 text-center pointer-events-none">
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 animate-pulse">
+            Ready to assist
+          </p>
+        </div>
+      )}
     </div>
   );
 };

@@ -14,4 +14,4 @@ export enum SessionStatus {
   SEARCHING = 'SEARCHING'
 }
 
-export type AppMode = 'LIVE' | 'SEARCH' | 'GALLERY';
+export type AppMode = 'LIVE' | 'GALLERY';
